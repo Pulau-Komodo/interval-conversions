@@ -1,7 +1,0 @@
-node_modules/
-src/
-tsconfig.json
-.eslintrc.json
-.gitignore
-built/test/
-built/generate-regex.js
