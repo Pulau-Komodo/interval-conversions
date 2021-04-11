@@ -22,7 +22,7 @@ Each unit is optional, but all present units need to be in order. All units are 
 * `minutes` can also be written as `minute`, `mins`, `min` or `m`
 * `seconds` can also be written as `second`, `secs`, `sec` or `s`
 
-A `-` can be inserted before any number to subtract all the units that follow it. Another `-` will make the following units additive again. For example, `1d -10m 30s` describes an interval 10.5 minutes short of a day. `1d -10m -30s` describes an interval 9.5 minutes short of a day.
+A `-` can be inserted before any number to subtract all the units that follow it. Another `-` will make the following units additive again (as if subtracting from the previous subtraction). For example, `1d - 10m 30s` describes an interval 10.5 minutes short of a day. `1d - 10m -30s` describes an interval 9.5 minutes short of a day.
 
 Because years and months vary in their exact ms duration, a Date object can optionally be passed to be used as a starting point. If no Date object is provided, it will make one representing the now.
 

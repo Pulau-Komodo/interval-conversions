@@ -65,6 +65,7 @@ test(parseInterval, ["100y -10s", new Date("1900")], 3155673590000);
 test(parseInterval, ["5a"], undefined);
 test(parseInterval, [".5s"], 500);
 test(parseInterval, [" 1 YEAR 4 mo -4 h -30.5 min 100s ", new Date("1900")], 41891530000);
+test(parseInterval, [" 3 y 1 months - 4 hour 15 mins -100s ", new Date("1950")], 97357600000);
 test(parseInterval, ["1 week -8 days"], -86400000);
 test(stringifyInterval, [500000], "8 minutes and 20 seconds");
 test(stringifyInterval, [-5000000], "1 hour and 23 minutes");
