@@ -19,6 +19,7 @@ Each unit is optional, but all present units need to be in order. All units are 
 * `weeks` can also be written as `week` or `w`
 * `days` can also be written as `day` or `d`
 * `hours` can also be written as `hour` or `h`
+* `minutes` can also be written as `minute`, `mins`, `min` or `m`
 * `seconds` can also be written as `second`, `secs`, `sec` or `s`
 
 A `-` can be inserted before any number to subtract all the units that follow it. Another `-` will make the following units additive again. For example, `1d -10m 30s` describes an interval 10.5 minutes short of a day. `1d -10m -30s` describes an interval 9.5 minutes short of a day.
