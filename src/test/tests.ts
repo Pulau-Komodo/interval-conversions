@@ -67,12 +67,26 @@ test(parseInterval, [".5s"], 500);
 test(parseInterval, [" 1 YEAR 4 mo -4 h -30.5 min 100s ", new Date("1900")], 41891530000);
 test(parseInterval, [" 3 y 1 months - 4 hour 15 mins -100s ", new Date("1950")], 97357600000);
 test(parseInterval, ["1 week -8 days"], -86400000);
+test(parseInterval, ["0.5 year -6 months", new Date("2000")], undefined);
+test(parseInterval, ["2.9 months", new Date("2000")], undefined);
+test(parseInterval, ["-2.9 months", new Date("2000")], undefined);
+test(parseInterval, ["578 days 16 hours 53 minutes 20 seconds"], 50000000000);
 test(stringifyInterval, [500000], "8 minutes and 20 seconds");
 test(stringifyInterval, [-5000000], "1 hour and 23 minutes");
 test(stringifyInterval, [50000000], "13 hours and 53 minutes");
 test(stringifyInterval, [-500000000], "5 days, 18 hours and 53 minutes");
 test(stringifyInterval, [5000000000], "57 days, 20 hours and 53 minutes");
+test(stringifyInterval, [50000000000], "578 days, 16 hours and 53 minutes");
 test(stringifyInterval, [-50000000000], "578 days, 16 hours and 53 minutes");
+test(stringifyInterval, [50000000000, new Date("1950")], "1 year, 7 months, 1 day, 16 hours and 53 minutes");
+test(stringifyInterval, [-50000000000, new Date("1950")], "1 year, 6 months, 29 days, 16 hours and 53 minutes");
+test(stringifyInterval, [2505600000, new Date("2020-01-15")], "29 days");
+test(stringifyInterval, [-2505600000, new Date("2020-01-15")], "29 days");
+test(stringifyInterval, [2505600000, new Date("2020-02-01")], "1 month");
+test(stringifyInterval, [-2505600000, new Date("2020-03-01")], "1 month");
+test(stringifyInterval, [parseInterval("1y 10min", new Date("1949-01-15 00:00:00")) ?? 0, new Date("1950-01-15 00:10:00")], "1 year and 10 minutes");
+test(stringifyInterval, [parseInterval("-1y 10min 59s", new Date("1951-03-01 10:59")) ?? 0, new Date("1950-03-01 00:00:00")], "1 year and 11 minutes");
+test(stringifyInterval, [NaN], "");
 test(stringifyIntervalShort, [500000], "9 minutes")
 test(stringifyIntervalShort, [-5000000], "2 hours");
 test(stringifyIntervalShort, [50000000], "14 hours")
@@ -85,5 +99,6 @@ test(stringifyIntervalShort, [50000000, true], "13 hours")
 test(stringifyIntervalShort, [-500000000, true], "5 days");
 test(stringifyIntervalShort, [5000000000, true], "~1 month")
 test(stringifyIntervalShort, [-50000000000, true], "1 year");
+test(stringifyIntervalShort, [NaN], "");
 
 console.log(`${successCount} succeeded and ${failureCount} failed out of ${testCount}`);
