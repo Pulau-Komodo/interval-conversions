@@ -1,3 +1,8 @@
+## 1.2.0
+
+- `stringifyInterval` can now be passed a `stringifyOptions` object as the second argument. This can have a `startDate` property, which behaves the same as passing a `Date` object, and a `thresholds` property, which is an object with properties, all optional, to set the lower and upper thresholds between which each unit should be used.
+- Fixed some rounding logic in `stringifyInterval` that could lead to things like `1 month and 31 days`.
+
 ## 1.1.0
 
 - `stringifyInterval` can now be passed a `Date` object as the second argument, to get months and years in the output. The date will be used as a starting point, and negative or positive input matters.

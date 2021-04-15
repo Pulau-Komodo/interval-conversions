@@ -1,0 +1,5 @@
+node_modules/
+src/
+built/test
+built/generate-regex.js
+built/generate-regex.d.ts

@@ -29,14 +29,37 @@ Because years and months vary in their exact ms duration, a Date object can opti
 
 ## Stringify interval
 ```ts
-stringifyInterval(interval: number, startDate?: Date): string
+stringifyInterval(interval: number, options?: Date | StringifyOptions): string
 const text = stringifyInterval(50000000000); // "578 days, 16 hours and 53 minutes"
 const text2 = stringifyInterval(50000000000, new Date("1950")); // "1 year, 7 months, 1 day, 16 hours and 53 minutes"
 ```
-Generates a user-friendly interval description from a ms interval. It is formatted like `1 day, 5 hours and 20 minutes`. If the total duration is under 10 minutes, it will say seconds too. If the optional second argument is supplied, it will say years and months, if appropriate, using the date as a starting point. Negative intervals will go backwards from the starting point, positive ones forwards. Without the date, it will not say months or years, no matter how many days there are.
+Generates a user-friendly interval description from a ms interval. It is formatted like `1 day, 5 hours and 20 minutes`. If the total duration is under 10 minutes, it will say seconds too. The second argument can be either a `Date`, or a `StringifyOptions` object. The `StringifyOptions` object has an optional `startDate` property that is a `Date`. If a date is supplied by either means, it will by default say years and months, if appropriate, using the date as a starting point. Negative intervals will go backwards from the starting point, positive ones forwards. Without the date, it will not say months or years, no matter the interval or the options.
+
+Other than `startDate`, `StringifyOptions` has the optional property `thresholds`. `thresholds` is an object with optional properties `years`, `months`, `weeks`, `days`, `hours`, `minutes` and `seconds`. Each property, when it exists, needs to be `[number, number]` or a boolean. If it is `[number, number]`, the first number is the lower threshold (expressed in that unit) for the unit to appear, and the second number is the upper threshold beyond which it no longer appears. If it is `true`, it will be treated like `[0, Infinity]`, and if it is `false`, it will be treated like `[Infinity, 0]` (although technically the upper threshold does not matter when the lower is `Infinity`). `Infinity` as a lower threshold makes a unit never appear, and as an upper threshold makes the threshold infinite.
+
+Fractional parts of thresholds for years and months do nothing.
+
+Even at a lower threshold of 0, a unit will not appear if there are zero of that unit. But if smaller units are disabled, the interval may be rounded up to have 1 of that unit.
+
+Note that it is possible and easy to provide settings that don't produce a sensible result. For example, some ranges of inputs could end up without units at all (resulting in an empty string), or years could disappear and be converted to months when there are too many. It is up to whoever configures the thresholds to make sure they make sense.
+
+These are the default thresholds:
+```ts
+{
+	years: [Infinity, 0], // Off, or [0, Infinity] (on) if a date is provided
+	months: [Infinity, 0], // Off, or [0, Infinity] (on) if a date is provided
+	weeks: [Infinity, 0], // Off
+	days: [0, Infinity], // On
+	hours: [0, Infinity], // On
+	minutes: [0, Infinity], // On
+	seconds: [0, 600] // On until number exceeds 600 seconds (10 minutes)
+};
+```
+
+## Stringify interval with single unit output
 
 ```ts
-stringifyInterval(interval: number, atLeast?: boolean): string
+stringifyIntervalShort(interval: number, atLeast?: boolean): string
 const text = stringifyIntervalShort(50000000000); // "2 years"
 const text2 = stringifyIntervalShort(50000000000, true); // "1 year"
 console.log(`The interval is somewhere between ${text2} and ${text}.`); // "The interval is somewhere between 1 year and 2 years."

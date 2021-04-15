@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/restrict-template-expressions */
 import { stringifyInterval, stringifyIntervalShort, parseInterval } from "../index.js";
 
 const stringifyInput = (element: unknown): string => {
@@ -16,7 +17,7 @@ const stringifyInput = (element: unknown): string => {
 		}
 		return string;
 	}
-}
+};
 
 let successCount = 0;
 let failureCount = 0;
@@ -35,8 +36,8 @@ const test = <I extends ReadonlyArray<unknown>, O>(func: (...arg0: I) => O, inpu
 			failureCount++;
 			const expectedText =
 				expected instanceof Error ? `throwing ${expected}` :
-				typeof expected === "string" ? `"${expected}"` :
-				`${expected}`
+					typeof expected === "string" ? `"${expected}"` :
+						`${expected}`;
 			console.error(`❌ ${func.name}(${inputText}) returned ${resultText} instead of ${expectedText}`);
 		}
 	} catch (error) {
@@ -52,8 +53,8 @@ const test = <I extends ReadonlyArray<unknown>, O>(func: (...arg0: I) => O, inpu
 			failureCount++;
 			const expectedText =
 				expected instanceof Error ? `throwing ${expected}` :
-				typeof expected === "string" ? `returning "${expected}"` :
-				`returning ${expected}`;
+					typeof expected === "string" ? `returning "${expected}"` :
+						`returning ${expected}`;
 			console.error(`❌ ${func.name}(${inputText}) threw ${error} instead of instead of ${expectedText}`);
 			console.error(error);
 		}
@@ -76,28 +77,94 @@ test(stringifyInterval, [-5000000], "1 hour and 23 minutes");
 test(stringifyInterval, [50000000], "13 hours and 53 minutes");
 test(stringifyInterval, [-500000000], "5 days, 18 hours and 53 minutes");
 test(stringifyInterval, [5000000000], "57 days, 20 hours and 53 minutes");
+test(stringifyInterval, [-500000000, {
+	thresholds: {
+		years: [Infinity, 0],
+		months: [Infinity, 0],
+		weeks: [0, Infinity],
+		days: [Infinity, 0],
+		hours: [Infinity, 0],
+		minutes: [Infinity, 0],
+		seconds: [0, Infinity]
+	}
+}], "500000 seconds");
+test(stringifyInterval, [5000000000, {
+	thresholds: {
+		years: [Infinity, 0],
+		months: [Infinity, 0],
+		weeks: [0, Infinity],
+		days: [Infinity, 0],
+		hours: [Infinity, 0],
+		minutes: [0, Infinity],
+		seconds: [0, Infinity]
+	}
+}], "8 weeks, 2693 minutes and 20 seconds");
 test(stringifyInterval, [50000000000], "578 days, 16 hours and 53 minutes");
 test(stringifyInterval, [-50000000000], "578 days, 16 hours and 53 minutes");
 test(stringifyInterval, [50000000000, new Date("1950")], "1 year, 7 months, 1 day, 16 hours and 53 minutes");
 test(stringifyInterval, [-50000000000, new Date("1950")], "1 year, 6 months, 29 days, 16 hours and 53 minutes");
-test(stringifyInterval, [2505600000, new Date("2020-01-15")], "29 days");
-test(stringifyInterval, [-2505600000, new Date("2020-01-15")], "29 days");
-test(stringifyInterval, [2505600000, new Date("2020-02-01")], "1 month");
-test(stringifyInterval, [-2505600000, new Date("2020-03-01")], "1 month");
+const yearsAndSeconds = {
+	months: false,
+	days: false,
+	hours: false,
+	minutes: false,
+	seconds: true
+};
+test(stringifyInterval, [50000000000, { startDate: new Date("2020"), thresholds: yearsAndSeconds }], "1 year and 18377600 seconds"); // Weird year and seconds combination (over leap year)
+test(stringifyInterval, [-50000000000, { startDate: new Date("2020"), thresholds: yearsAndSeconds }], "1 year and 18464000 seconds"); // Weird year and seconds combination but negative (over non-leap years)
+const monthsOnly: Record<string, [number, number]> = {
+	years: [Infinity, 0],
+	months: [0, Infinity],
+	days: [Infinity, 0],
+	hours: [Infinity, 0],
+	minutes: [Infinity, 0],
+	seconds: [Infinity, 0,]
+};
+test(stringifyInterval, [50000000000, { startDate: new Date("2020"), thresholds: monthsOnly }], "19 months"); // Bunch of time with months only
+test(stringifyInterval, [-50000000000, { startDate: new Date("2020"), thresholds: monthsOnly }], "19 months"); // Bunch of negative time with months only
+test(stringifyInterval, [-50000000000, {
+	startDate: new Date("2020"), thresholds: {
+		years: [Infinity, 0],
+		months: [Infinity, 0],
+		weeks: [Infinity, 0],
+		days: [Infinity, 0],
+		hours: [Infinity, 0],
+		minutes: [Infinity, 0],
+		seconds: [Infinity, 0,]
+	}
+}], ""); // Bunch of time but nothing enabled
+const yearsAndMonths = {
+	years: true,
+	months: true,
+	weeks: false,
+	days: false,
+	hours: false,
+	minutes: false,
+	seconds: false
+};
+test(stringifyInterval, [1234567890123, { startDate: new Date("2000"), thresholds: yearsAndMonths }], "39 years and 1 month"); // Bunch of time with only years and months
+test(stringifyInterval, [-1234567890123, { startDate: new Date("2000"), thresholds: yearsAndMonths }], "39 years and 1 month"); // Bunch of negative time with only years and months
+test(stringifyInterval, [123, { startDate: new Date("2000"), thresholds: yearsAndMonths }], "0 months"); // Little time with only years and months
+test(stringifyInterval, [-123, { startDate: new Date("2000"), thresholds: yearsAndMonths }], "0 months"); // Little negative time with only years and months
+test(stringifyInterval, [2505600000, new Date("2020-01-15")], "29 days"); // 29 days into middle of February
+test(stringifyInterval, [-2505600000, new Date("2020-01-15")], "29 days"); // -29 days into middle of December
+test(stringifyInterval, [2505600000, new Date("2020-02-01")], "1 month"); // 29 days but it's start of leap year February
+test(stringifyInterval, [-2505600000, new Date("2020-03-01")], "1 month"); // -29 days but it's right after leap year February
+test(stringifyInterval, [2678399000, new Date("2021-01-01")], "1 month"); // 1 second short of 1 month, being rounded up
 test(stringifyInterval, [parseInterval("1y 10min", new Date("1949-01-15 00:00:00")) ?? 0, new Date("1950-01-15 00:10:00")], "1 year and 10 minutes");
 test(stringifyInterval, [parseInterval("-1y 10min 59s", new Date("1951-03-01 10:59")) ?? 0, new Date("1950-03-01 00:00:00")], "1 year and 11 minutes");
 test(stringifyInterval, [NaN], "");
-test(stringifyIntervalShort, [500000], "9 minutes")
+test(stringifyIntervalShort, [500000], "9 minutes");
 test(stringifyIntervalShort, [-5000000], "2 hours");
-test(stringifyIntervalShort, [50000000], "14 hours")
+test(stringifyIntervalShort, [50000000], "14 hours");
 test(stringifyIntervalShort, [-500000000], "6 days");
-test(stringifyIntervalShort, [5000000000], "~2 months")
+test(stringifyIntervalShort, [5000000000], "~2 months");
 test(stringifyIntervalShort, [-50000000000], "2 years");
-test(stringifyIntervalShort, [500000, true], "8 minutes")
+test(stringifyIntervalShort, [500000, true], "8 minutes");
 test(stringifyIntervalShort, [-5000000, true], "1 hour");
-test(stringifyIntervalShort, [50000000, true], "13 hours")
+test(stringifyIntervalShort, [50000000, true], "13 hours");
 test(stringifyIntervalShort, [-500000000, true], "5 days");
-test(stringifyIntervalShort, [5000000000, true], "~1 month")
+test(stringifyIntervalShort, [5000000000, true], "~1 month");
 test(stringifyIntervalShort, [-50000000000, true], "1 year");
 test(stringifyIntervalShort, [NaN], "");
 
