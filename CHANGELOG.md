@@ -1,3 +1,7 @@
+## 1.3.0
+
+- `stringifyInterval`'s `stringifyOptions` can now have a `strings` property, allowing string overrides.
+
 ## 1.2.0
 
 - `stringifyInterval` can now be passed a `stringifyOptions` object as the second argument. This can have a `startDate` property, which behaves the same as passing a `Date` object, and a `thresholds` property, which is an object with properties, all optional, to set the lower and upper thresholds between which each unit should be used.

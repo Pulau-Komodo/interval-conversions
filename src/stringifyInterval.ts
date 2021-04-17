@@ -16,7 +16,7 @@ export const stringifyInterval = (interval: number, options: Date | StringifyOpt
 		inPast = true;
 	}
 
-	const { startDate, thresholds } = processStringifyOptions(options);
+	const { startDate, thresholds, strings } = processStringifyOptions(options);
 	const enabled: Record<TimeUnit, boolean> = {
 		years: false,
 		months: false,
@@ -32,9 +32,9 @@ export const stringifyInterval = (interval: number, options: Date | StringifyOpt
 	const joiner = () => {
 		outputElements--;
 		if (outputElements > 1)
-			return ", ";
+			return strings.joiner;
 		if (outputElements === 1)
-			return " and ";
+			return strings.finalJoiner;
 		return "";
 	};
 
@@ -79,24 +79,24 @@ export const stringifyInterval = (interval: number, options: Date | StringifyOpt
 			console.log("Some problem with the rounding in stringifyInterval");
 	}
 
-	const timeElements: [TimeUnit, string, string, number][] = [
-		["years", "year", "years", years],
-		["months", "month", "months", months],
-		["weeks", "week", "weeks", weeks],
-		["days", "day", "days", days],
-		["hours", "hour", "hours", hours],
-		["minutes", "minute", "minutes", minutes],
-		["seconds", "second", "seconds", seconds]
+	const timeElements: [TimeUnit, number][] = [
+		["years", years],
+		["months", months],
+		["weeks", weeks],
+		["days", days],
+		["hours", hours],
+		["minutes", minutes],
+		["seconds", seconds]
 	];
 	// Calculate number of text elements to be joined with comma/and
-	for (const [,,, value] of timeElements) {
+	for (const [, value] of timeElements) {
 		if (value > 0) outputElements++;
 	}
 
 	if (outputElements === 0) { // No elements, output 0 of smallest enabled
-		for (const [element,, plural] of timeElements.reverse()) {
+		for (const [element] of timeElements.reverse()) {
 			if (enabled[element]) {
-				return `0 ${plural}`;
+				return `0${strings.spacer}${strings[element][1]}`;
 			}
 		}
 		console.log(`stringifyInterval ended up with no enabled elements`);
@@ -104,11 +104,11 @@ export const stringifyInterval = (interval: number, options: Date | StringifyOpt
 	}
 
 	let text = "";
-	for (const [, singular, plural, value] of timeElements) {
+	for (const [element, value] of timeElements) {
 		if (value > 1) {
-			text += `${value} ${plural}${joiner()}`;
+			text += `${value}${strings.spacer}${strings[element][1]}${joiner()}`;
 		} else if (value === 1) {
-			text += `${value} ${singular}${joiner()}`;
+			text += `${value}${strings.spacer}${strings[element][0]}${joiner()}`;
 		}
 	}
 
@@ -121,8 +121,8 @@ export const stringifyInterval = (interval: number, options: Date | StringifyOpt
  * With shouldRound true, it also rounds to the smallest, enabled unit.
  * 
  * thresholds is used to determine which elements are enabled between the two.
- * */
- const getYearsMonthsRemainder = (startDate: Date, interval: number, inPast: boolean, shouldRound: boolean, thresholds: {
+ */
+const getYearsMonthsRemainder = (startDate: Date, interval: number, inPast: boolean, shouldRound: boolean, thresholds: {
 	years: [number, number];
 	months: [number, number];
 }): [number, number, number] => {
@@ -214,6 +214,7 @@ type StringifyThresholdsInput2 = Record<TimeUnit, [number, number] | boolean>;
 interface StringifyOptions {
 	startDate?: Date;
 	thresholds?: StringifyThresholdsInput;
+	strings?: StringSettingsInput;
 }
 
 const thresholdDefaults: StringifyThresholds = {
@@ -231,6 +232,22 @@ const thresholdWithDateDefaults: Partial<StringifyThresholds> = {
 	months: [0, Infinity]
 };
 
+type StringSettings = Record<TimeUnit, [string, string]> & Record<"spacer" | "joiner" | "finalJoiner", string>;
+type StringSettingsInput = Partial<Record<TimeUnit, [string, string] | string>> & Record<"spacer" | "joiner" | "finalJoiner", string>;
+
+const stringDefaults: StringSettings = {
+	years: ["year", "years"],
+	months: ["month", "months"],
+	weeks: ["week", "weeks"],
+	days: ["day", "days"],
+	hours: ["hour", "hours"],
+	minutes: ["minute", "minutes"],
+	seconds: ["second", "seconds"],
+	spacer: " ",
+	joiner: ", ",
+	finalJoiner: " and "
+};
+
 type Entry<O, K extends keyof O> = [K, O[K]]
 type Entries<O> = Entry<O, keyof O>[]
 
@@ -238,15 +255,17 @@ type Entries<O> = Entry<O, keyof O>[]
 const processStringifyOptions = (options: Date | StringifyOptions): {
 	startDate?: Date;
 	thresholds: StringifyThresholds;
+	strings: StringSettings;
 } => {
 	if (options instanceof Date) {
 		const startDate = options;
 		return {
 			startDate,
-			thresholds: { ...thresholdDefaults, ...thresholdWithDateDefaults }
+			thresholds: { ...thresholdDefaults, ...thresholdWithDateDefaults },
+			strings: stringDefaults
 		};
 	}
-	const { startDate, thresholds = {} } = options;
+	const { startDate, thresholds = {}, strings = {} } = options;
 	const outputThresholds = startDate ? { ...thresholdDefaults, ...thresholdWithDateDefaults } : { ...thresholdDefaults };
 	for (const [unit, value] of Object.entries(thresholds) as Entries<StringifyThresholdsInput>) {
 		if (value === true)
@@ -256,7 +275,18 @@ const processStringifyOptions = (options: Date | StringifyOptions): {
 		else if (value !== undefined)
 			outputThresholds[unit] = value;
 	}
-	return { startDate, thresholds: outputThresholds };
+	const outputStrings = { ...stringDefaults };
+	for (const [stringName, stringOrTuple] of Object.entries(strings) as Entries<StringSettingsInput>) {
+		if (typeof stringOrTuple === "string") {
+			if (stringName === "spacer" || stringName === "joiner" || stringName === "finalJoiner")
+				outputStrings[stringName] = stringOrTuple;
+			else
+				outputStrings[stringName] = [stringOrTuple, stringOrTuple];
+		} else if (stringOrTuple !== undefined && stringName !== "spacer" && stringName !== "joiner" && stringName !== "finalJoiner") {
+			outputStrings[stringName] = stringOrTuple;
+		}
+	}
+	return { startDate, thresholds: outputThresholds, strings: outputStrings };
 };
 
 /** Finds the smallest enabled constant unit to round interval to, and true if none were enabled */

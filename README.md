@@ -33,9 +33,9 @@ stringifyInterval(interval: number, options?: Date | StringifyOptions): string
 const text = stringifyInterval(50000000000); // "578 days, 16 hours and 53 minutes"
 const text2 = stringifyInterval(50000000000, new Date("1950")); // "1 year, 7 months, 1 day, 16 hours and 53 minutes"
 ```
-Generates a user-friendly interval description from a ms interval. It is formatted like `1 day, 5 hours and 20 minutes`. If the total duration is under 10 minutes, it will say seconds too. The second argument can be either a `Date`, or a `StringifyOptions` object. The `StringifyOptions` object has an optional `startDate` property that is a `Date`. If a date is supplied by either means, it will by default say years and months, if appropriate, using the date as a starting point. Negative intervals will go backwards from the starting point, positive ones forwards. Without the date, it will not say months or years, no matter the interval or the options.
+Generates a user-friendly interval description from a ms interval. It is formatted like `1 day, 5 hours and 20 minutes`. If the total duration is under 10 minutes, it will say seconds too. The second argument can be either a `Date`, or an `options` object. The `options` object has an optional `startDate` property that is a `Date`. If a date is supplied by either means, it will by default say years and months, if appropriate, using the date as a starting point. Negative intervals will go backwards from the starting point, positive ones forwards. Without the date, it will not say months or years, no matter the interval or the options.
 
-Other than `startDate`, `StringifyOptions` has the optional property `thresholds`. `thresholds` is an object with optional properties `years`, `months`, `weeks`, `days`, `hours`, `minutes` and `seconds`. Each property, when it exists, needs to be `[number, number]` or a boolean. If it is `[number, number]`, the first number is the lower threshold (expressed in that unit) for the unit to appear, and the second number is the upper threshold beyond which it no longer appears. If it is `true`, it will be treated like `[0, Infinity]`, and if it is `false`, it will be treated like `[Infinity, 0]` (although technically the upper threshold does not matter when the lower is `Infinity`). `Infinity` as a lower threshold makes a unit never appear, and as an upper threshold makes the threshold infinite.
+The `options` can also have a property `thresholds`. `thresholds` is an object with optional properties `years`, `months`, `weeks`, `days`, `hours`, `minutes` and `seconds`. Each property, when it exists, needs to be `[number, number]` or a boolean. If it is `[number, number]`, the first number is the lower threshold (expressed in that unit) for the unit to appear, and the second number is the upper threshold beyond which it no longer appears. If it is `true`, it will be treated like `[0, Infinity]`, and if it is `false`, it will be treated like `[Infinity, 0]` (although technically the upper threshold does not matter when the lower is `Infinity`). `Infinity` as a lower threshold makes a unit never appear, and as an upper threshold makes the threshold infinite.
 
 Fractional parts of thresholds for years and months do nothing.
 
@@ -53,6 +53,24 @@ These are the default thresholds:
 	hours: [0, Infinity], // On
 	minutes: [0, Infinity], // On
 	seconds: [0, 600] // On until number exceeds 600 seconds (10 minutes)
+};
+```
+
+`stringifyOptions` has another optional property, `strings`. This property allows overriding the strings used to construct the output, for localization or whatever other reason. The time unit properties can be passed strings instead of arrays, in which case it will use the same string for the singular and the plural.
+
+These are the default strings:
+```ts
+{
+	years: ["year", "years"],
+	months: ["month", "months"],
+	weeks: ["week", "weeks"],
+	days: ["day", "days"],
+	hours: ["hour", "hours"],
+	minutes: ["minute", "minutes"],
+	seconds: ["second", "seconds"],
+	spacer: " ",
+	joiner: ", ",
+	finalJoiner: " and "
 };
 ```
 
