@@ -1,3 +1,7 @@
+## 1.3.1
+
+- Now exporting types `StringifyOptions`, `StringifyThresholds` and `StringSettings`, for help constructing named options objects in Typescript in a type safe way.
+
 ## 1.3.0
 
 - `stringifyInterval`'s `stringifyOptions` can now have a `strings` property, allowing string overrides.

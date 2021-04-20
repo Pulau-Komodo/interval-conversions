@@ -207,17 +207,11 @@ const getYearsMonthsRemainder = (startDate: Date, interval: number, inPast: bool
 };
 
 type TimeUnit = "years" | "months" | "weeks" | "days" | "hours" | "minutes" | "seconds";
-type StringifyThresholds = { [K in TimeUnit]: [number, number] };
-type StringifyThresholdsInput = Partial<{ [K in TimeUnit]: StringifyThresholds[K] | boolean }>;
-type StringifyThresholdsInput2 = Record<TimeUnit, [number, number] | boolean>;
+type StringifyThresholdsFull = { [K in TimeUnit]: [number, number] };
+export type StringifyThresholds = Partial<{ [K in TimeUnit]: StringifyThresholdsFull[K] | boolean }>;
+type StringifyThresholds2 = Record<TimeUnit, [number, number] | boolean>;
 
-interface StringifyOptions {
-	startDate?: Date;
-	thresholds?: StringifyThresholdsInput;
-	strings?: StringSettingsInput;
-}
-
-const thresholdDefaults: StringifyThresholds = {
+const thresholdDefaults: StringifyThresholdsFull = {
 	years: [Infinity, 0],
 	months: [Infinity, 0],
 	weeks: [Infinity, 0],
@@ -227,15 +221,15 @@ const thresholdDefaults: StringifyThresholds = {
 	seconds: [0, 10 * MINUTE_S]
 };
 
-const thresholdWithDateDefaults: Partial<StringifyThresholds> = {
+const thresholdWithDateDefaults: Partial<StringifyThresholdsFull> = {
 	years: [0, Infinity],
 	months: [0, Infinity]
 };
 
-type StringSettings = Record<TimeUnit, [string, string]> & Record<"spacer" | "joiner" | "finalJoiner", string>;
-type StringSettingsInput = Partial<Record<TimeUnit, [string, string] | string>> & Record<"spacer" | "joiner" | "finalJoiner", string>;
+type StringSettingsFull = Record<TimeUnit, [string, string]> & Record<"spacer" | "joiner" | "finalJoiner", string>;
+export type StringSettings = Partial<Record<TimeUnit, [string, string] | string>> & Record<"spacer" | "joiner" | "finalJoiner", string>;
 
-const stringDefaults: StringSettings = {
+const stringDefaults: StringSettingsFull = {
 	years: ["year", "years"],
 	months: ["month", "months"],
 	weeks: ["week", "weeks"],
@@ -248,14 +242,20 @@ const stringDefaults: StringSettings = {
 	finalJoiner: " and "
 };
 
+export interface StringifyOptions {
+	startDate?: Date;
+	thresholds?: StringifyThresholds;
+	strings?: StringSettings;
+}
+
 type Entry<O, K extends keyof O> = [K, O[K]]
 type Entries<O> = Entry<O, keyof O>[]
 
 /** Processes a date or StringifyOptions into a StringifyOptions with all the defaults filled in */
 const processStringifyOptions = (options: Date | StringifyOptions): {
 	startDate?: Date;
-	thresholds: StringifyThresholds;
-	strings: StringSettings;
+	thresholds: StringifyThresholdsFull;
+	strings: StringSettingsFull;
 } => {
 	if (options instanceof Date) {
 		const startDate = options;
@@ -267,7 +267,7 @@ const processStringifyOptions = (options: Date | StringifyOptions): {
 	}
 	const { startDate, thresholds = {}, strings = {} } = options;
 	const outputThresholds = startDate ? { ...thresholdDefaults, ...thresholdWithDateDefaults } : { ...thresholdDefaults };
-	for (const [unit, value] of Object.entries(thresholds) as Entries<StringifyThresholdsInput>) {
+	for (const [unit, value] of Object.entries(thresholds) as Entries<StringifyThresholds>) {
 		if (value === true)
 			outputThresholds[unit] = [0, Infinity];
 		else if (value === false)
@@ -276,7 +276,7 @@ const processStringifyOptions = (options: Date | StringifyOptions): {
 			outputThresholds[unit] = value;
 	}
 	const outputStrings = { ...stringDefaults };
-	for (const [stringName, stringOrTuple] of Object.entries(strings) as Entries<StringSettingsInput>) {
+	for (const [stringName, stringOrTuple] of Object.entries(strings) as Entries<StringSettings>) {
 		if (typeof stringOrTuple === "string") {
 			if (stringName === "spacer" || stringName === "joiner" || stringName === "finalJoiner")
 				outputStrings[stringName] = stringOrTuple;
