@@ -153,11 +153,12 @@ test(stringifyInterval, [-2505600000, new Date("2020-03-01")], "1 month"); // -2
 test(stringifyInterval, [2678399000, new Date("2021-01-01")], "1 month"); // 1 second short of 1 month, being rounded up
 test(stringifyInterval, [parseInterval("1y 10min", new Date("1949-01-15 00:00:00")) ?? 0, new Date("1950-01-15 00:10:00")], "1 year and 10 minutes");
 test(stringifyInterval, [parseInterval("-1y 10min 59s", new Date("1951-03-01 10:59")) ?? 0, new Date("1950-03-01 00:00:00")], "1 year and 11 minutes");
+const shortStrings =  {
+	years: "y", months: "mo", weeks: "w", days: "d", hours: "h", minutes: "m", seconds: "s",
+	spacer: "", joiner: " ", finalJoiner: " "
+};
 test(stringifyInterval, [1234567890123, {
-	startDate: new Date("2000"), strings: {
-		years: "y", months: "mo", weeks: "we", days: "d", hours: "h", minutes: "m", seconds: "s",
-		spacer: "", joiner: " ", finalJoiner: " "
-	}
+	startDate: new Date("2000"), strings: shortStrings
 }], "39y 1mo 12d 23h 32m"); // String overrides
 test(stringifyInterval, [NaN], "");
 test(stringifyIntervalShort, [500000], "9 minutes");
