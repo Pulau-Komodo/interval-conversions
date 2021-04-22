@@ -105,10 +105,9 @@ export const stringifyInterval = (interval: number, options: Date | StringifyOpt
 
 	let text = "";
 	for (const [element, value] of timeElements) {
-		if (value > 1) {
-			text += `${value}${strings.spacer}${strings[element][1]}${joiner()}`;
-		} else if (value === 1) {
-			text += `${value}${strings.spacer}${strings[element][0]}${joiner()}`;
+		if (value > 0) {
+			const elementString = value === 1 ? strings[element][0] : strings[element][1];
+			text += `${value}${strings.spacer}${elementString}${joiner()}`;
 		}
 	}
 
@@ -180,7 +179,7 @@ const getYearsMonthsRemainder = (startDate: Date, interval: number, inPast: bool
 		}
 		months += years * 12;
 		years = 0;
-	} else if (!enableMonths) { // No years but there must still be years, so put the months back into interval
+	} else if (!enableMonths) { // No months but there must still be years, so put the months back into interval
 		const beforeMonths = changingDate.getTime();
 		changingDate.setUTCMonth(changingDate.getUTCMonth() + (inPast ? months : -months));
 		months = 0;
@@ -221,13 +220,18 @@ const thresholdDefaults: StringifyThresholdsFull = {
 	seconds: [0, 10 * MINUTE_S]
 };
 
-const thresholdWithDateDefaults: Partial<StringifyThresholdsFull> = {
+const thresholdWithDateDefaults: StringifyThresholdsFull = {
 	years: [0, Infinity],
-	months: [0, Infinity]
+	months: [0, Infinity],
+	weeks: [Infinity, 0],
+	days: [0, Infinity],
+	hours: [0, Infinity],
+	minutes: [0, Infinity],
+	seconds: [0, 10 * MINUTE_S]
 };
 
 type StringSettingsFull = Record<TimeUnit, [string, string]> & Record<"spacer" | "joiner" | "finalJoiner", string>;
-export type StringSettings = Partial<Record<TimeUnit, [string, string] | string>> & Record<"spacer" | "joiner" | "finalJoiner", string>;
+export type StringSettings = Partial<Record<TimeUnit, [string, string] | string> & Record<"spacer" | "joiner" | "finalJoiner", string>>;
 
 const stringDefaults: StringSettingsFull = {
 	years: ["year", "years"],
@@ -261,32 +265,67 @@ const processStringifyOptions = (options: Date | StringifyOptions): {
 		const startDate = options;
 		return {
 			startDate,
-			thresholds: { ...thresholdDefaults, ...thresholdWithDateDefaults },
+			thresholds: thresholdWithDateDefaults,
 			strings: stringDefaults
 		};
 	}
-	const { startDate, thresholds = {}, strings = {} } = options;
-	const outputThresholds = startDate ? { ...thresholdDefaults, ...thresholdWithDateDefaults } : { ...thresholdDefaults };
-	for (const [unit, value] of Object.entries(thresholds) as Entries<StringifyThresholds>) {
-		if (value === true)
-			outputThresholds[unit] = [0, Infinity];
-		else if (value === false)
-			outputThresholds[unit] = [Infinity, 0];
-		else if (value !== undefined)
-			outputThresholds[unit] = value;
-	}
-	const outputStrings = { ...stringDefaults };
-	for (const [stringName, stringOrTuple] of Object.entries(strings) as Entries<StringSettings>) {
-		if (typeof stringOrTuple === "string") {
-			if (stringName === "spacer" || stringName === "joiner" || stringName === "finalJoiner")
-				outputStrings[stringName] = stringOrTuple;
-			else
-				outputStrings[stringName] = [stringOrTuple, stringOrTuple];
-		} else if (stringOrTuple !== undefined && stringName !== "spacer" && stringName !== "joiner" && stringName !== "finalJoiner") {
-			outputStrings[stringName] = stringOrTuple;
-		}
-	}
+	const { startDate, thresholds, strings } = options;
+	const outputThresholds = processThresholdSettings(thresholds, startDate !== undefined);
+	const outputStrings = processStringSettings(strings);
 	return { startDate, thresholds: outputThresholds, strings: outputStrings };
+};
+
+const timeElements: TimeUnit[] = ["years", "months", "weeks", "days", "hours", "minutes", "seconds"];
+
+const processThresholdSettings = (settings: StringifyThresholds | undefined, date: boolean): StringifyThresholdsFull => {
+	if (!settings)
+		return date ? thresholdWithDateDefaults : thresholdDefaults;
+	const {
+		years = date ? [0, Infinity] : [Infinity, 0],
+		months = date ? [0, Infinity] : [Infinity, 0],
+		weeks = [Infinity, 0],
+		days = [0, Infinity],
+		hours = [0, Infinity],
+		minutes = [0, Infinity],
+		seconds = [0, 10 * MINUTE_S]
+	} = settings;
+	const finalSettings = { years, months, weeks, days, hours, minutes, seconds };
+	for (const element of timeElements)
+		finalSettings[element] = booleanToTuple(finalSettings[element]);
+	return finalSettings as StringifyThresholdsFull;
+};
+
+const booleanToTuple = (booleanOrTuple: boolean | [number, number]): [number, number] => {
+	if (booleanOrTuple === false)
+		return [Infinity, 0];
+	if (booleanOrTuple === true)
+		return [0, Infinity];
+	return booleanOrTuple;
+};
+
+const processStringSettings = (settings: StringSettings | undefined): StringSettingsFull => {
+	if (!settings)
+		return stringDefaults;
+	const {
+		years = ["year", "years"],
+		months = ["month", "months"],
+		weeks = ["week", "weeks"],
+		days = ["day", "days"],
+		hours = ["hour", "hours"],
+		minutes = ["minute", "minutes"],
+		seconds = ["second", "seconds"],
+		spacer = " ",
+		joiner = ", ",
+		finalJoiner = " and "
+	} = settings;
+	const finalSettings = { years, months, weeks, days, hours, minutes, seconds, spacer, joiner, finalJoiner };
+	for (const element of timeElements)
+		finalSettings[element] = stringToTuple(finalSettings[element]);
+	return finalSettings as StringSettingsFull;
+};
+
+const stringToTuple = (stringOrTuple: string | [string, string]): [string, string] => {
+	return typeof stringOrTuple === "string" ? [stringOrTuple, stringOrTuple] : stringOrTuple;
 };
 
 /** Finds the smallest enabled constant unit to round interval to, and true if none were enabled */
