@@ -1,3 +1,8 @@
+## 1.3.2
+
+- Fixed an error in types that was causing some string options to incorrectly not be optional.
+- Optimized a bit.
+
 ## 1.3.1
 
 - Now exporting types `StringifyOptions`, `StringifyThresholds` and `StringSettings`, for help constructing named options objects in Typescript in a type safe way.
