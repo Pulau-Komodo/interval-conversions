@@ -61,6 +61,7 @@ const test = <I extends ReadonlyArray<unknown>, O>(func: (...arg0: I) => O, inpu
 	}
 };
 
+test(parseInterval, [""], undefined);
 test(parseInterval, ["5d"], 432000000);
 test(parseInterval, ["100y -10s", new Date("1900")], 3155673590000);
 test(parseInterval, ["5a"], undefined);
@@ -101,6 +102,10 @@ test(stringifyInterval, [5000000000, {
 }], "8 weeks, 2693 minutes and 20 seconds");
 test(stringifyInterval, [50000000000], "578 days, 16 hours and 53 minutes");
 test(stringifyInterval, [-50000000000], "578 days, 16 hours and 53 minutes");
+test(stringifyInterval, [50000000000, {
+	thresholds: { days: false, hours: false, minutes: false, seconds: true },
+	strings: { seconds: "secs" }
+}], "50000000 secs"); // Only seconds, with custom string
 test(stringifyInterval, [50000000000, new Date("1950")], "1 year, 7 months, 1 day, 16 hours and 53 minutes");
 test(stringifyInterval, [-50000000000, new Date("1950")], "1 year, 6 months, 29 days, 16 hours and 53 minutes");
 const yearsAndSeconds = {
