@@ -21,7 +21,7 @@ Each unit is optional, but all present units need to be in order. All units are 
 * `months` can also be written as `month` or `mo`
 * `weeks` can also be written as `week` or `w`
 * `days` can also be written as `day` or `d`
-* `hours` can also be written as `hour` or `h`
+* `hours` can also be written as `hour`, `hrs`, `hr` or `h`
 * `minutes` can also be written as `minute`, `mins`, `min` or `m`
 * `seconds` can also be written as `second`, `secs`, `sec` or `s`
 

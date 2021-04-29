@@ -1,3 +1,7 @@
+## 1.3.3
+
+- Added "hrs" and "hr" as ways to specify the hours.
+
 ## 1.3.2
 
 - Fixed an error in types that was causing some string options to incorrectly not be optional.
