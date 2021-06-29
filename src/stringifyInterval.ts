@@ -3,11 +3,38 @@ const HOUR_S = MINUTE_S * 60;
 const DAY_S = HOUR_S * 24;
 const WEEK_S = DAY_S * 7;
 
-/** Stringifies a ms interval like "1 day, 5 hours and 20 minutes". It says seconds only if the interval is under 10 minutes. If a date is supplied, it may say years and months as well. */
+/** Processes the options (without startDate) once, which is a relatively expensive operation, then stores the processed configuration for future stringifier calls. */
+export class IntervalStringifier {
+	settings: StringifySettings;
+	constructor(options: StringifierOptions = {}) {
+		const { settings } = processStringifyOptions(options);
+		this.settings = settings;
+	}
+	/**
+	 * Stringifies a ms interval like "1 day, 5 hours and 20 minutes". If a date is supplied, it is capable of outputting years and months.
+	 * 
+	 * Behaves the same as stringifyInterval, except that all options (except startDate) were already processed by the constructor.
+	 * 
+	 * This one throws an error if the number is NaN, because that seems like a more proper outcome, and I got the opportunity to do that without changing existing API.
+	 */
+	stringify(interval: number, startDate?: Date): string {
+		if (isNaN(interval))
+			throw new RangeError("Cannot stringify NaN interval");
+	
+		return stringifyIntervalInternal(interval, this.settings, startDate);
+	}
+}
+
+/** Stringifies a ms interval like "1 day, 5 hours and 20 minutes". If a starting date is supplied, it is capable of outputting years and months. */
 export const stringifyInterval = (interval: number, options: Date | StringifyOptions = {}): string => {
 	if (isNaN(interval))
 		return "";
 
+	const { settings, startDate } = processStringifyOptions(options);
+	return stringifyIntervalInternal(interval, settings, startDate);
+};
+
+const stringifyIntervalInternal = (interval: number, settings: StringifySettings, startDate: Date | undefined): string => {
 	interval = Math.round(interval / 1000);
 
 	let inPast = false;
@@ -16,7 +43,8 @@ export const stringifyInterval = (interval: number, options: Date | StringifyOpt
 		inPast = true;
 	}
 
-	const { startDate, thresholds, strings } = processStringifyOptions(options);
+	const { thresholds, pad, displayZero, strings } = settings;
+
 	const enabled: Record<TimeUnit, boolean> = {
 		years: false,
 		months: false,
@@ -25,17 +53,6 @@ export const stringifyInterval = (interval: number, options: Date | StringifyOpt
 		hours: interval >= thresholds.hours[0] * HOUR_S && interval <= thresholds.hours[1] * HOUR_S,
 		minutes: interval >= thresholds.minutes[0] * HOUR_S && interval <= thresholds.minutes[1] * MINUTE_S,
 		seconds: interval >= thresholds.seconds[0] && interval <= thresholds.seconds[1]
-	};
-
-	let outputElements = 0;
-	/** Inserts a comma or "and" (or nothing) as appropriate */
-	const joiner = () => {
-		outputElements--;
-		if (outputElements > 1)
-			return strings.joiner;
-		if (outputElements === 1)
-			return strings.finalJoiner;
-		return "";
 	};
 
 	let shouldRoundToMonthsOrYears = false;
@@ -51,10 +68,9 @@ export const stringifyInterval = (interval: number, options: Date | StringifyOpt
 
 	if (startDate && (thresholds.years[0] < Infinity || thresholds.months[0] < Infinity)) {
 		[years, months, interval] = getYearsMonthsRemainder(startDate, interval, inPast, shouldRoundToMonthsOrYears, thresholds);
+		enabled.years = years >= thresholds.years[0] && years <= thresholds.years[1];
+		enabled.months = months + years * 12 >= thresholds.months[0] && months + years * 12 <= thresholds.months[1];
 	}
-
-	enabled.years = years >= thresholds.years[0] && years <= thresholds.years[1];
-	enabled.months = months + years * 12 >= thresholds.months[0] && months + years * 12 <= thresholds.months[1];
 
 	if (enabled.weeks) {
 		weeks = Math.floor(interval / WEEK_S);
@@ -76,8 +92,20 @@ export const stringifyInterval = (interval: number, options: Date | StringifyOpt
 		seconds = interval;
 	} else {
 		if (interval > 0 && (years > 0 || months > 0 || enabled.weeks || enabled.days || enabled.hours || enabled.minutes))
-			console.log("Some problem with the rounding in stringifyInterval");
+			console.warn("Some problem with the rounding in stringifyInterval");
 	}
+
+
+	let outputElements = 0;
+	/** Inserts a comma or "and" (or nothing) as appropriate */
+	const joiner = () => {
+		outputElements--;
+		if (outputElements > 1)
+			return strings.joiner;
+		if (outputElements === 1)
+			return strings.finalJoiner;
+		return "";
+	};
 
 	const timeElements: [TimeUnit, number][] = [
 		["years", years],
@@ -89,8 +117,8 @@ export const stringifyInterval = (interval: number, options: Date | StringifyOpt
 		["seconds", seconds]
 	];
 	// Calculate number of text elements to be joined with comma/and
-	for (const [, value] of timeElements) {
-		if (value > 0) outputElements++;
+	for (const [element, value] of timeElements) {
+		if (enabled[element] && (displayZero[element] || value > 0)) outputElements++;
 	}
 
 	if (outputElements === 0) { // No elements, output 0 of smallest enabled
@@ -99,15 +127,20 @@ export const stringifyInterval = (interval: number, options: Date | StringifyOpt
 				return `0${strings.spacer}${strings[element][1]}`;
 			}
 		}
-		console.log(`stringifyInterval ended up with no enabled elements`);
+		//console.log(`stringifyInterval ended up with no enabled elements`);
 		return ""; // Nothing enabled
 	}
 
 	let text = "";
 	for (const [element, value] of timeElements) {
-		if (value > 0) {
+		if (enabled[element] && (displayZero[element] || value > 0)) {
+			let numberPortion = value.toString();
+			if (pad[element]) {
+				const padCount = element === "years" ? 4 : 2;
+				numberPortion = numberPortion.padStart(padCount, "0");
+			}
 			const elementString = value === 1 ? strings[element][0] : strings[element][1];
-			text += `${value}${strings.spacer}${elementString}${joiner()}`;
+			text += `${numberPortion}${strings.spacer}${elementString}${joiner()}`;
 		}
 	}
 
@@ -207,20 +240,10 @@ const getYearsMonthsRemainder = (startDate: Date, interval: number, inPast: bool
 
 type TimeUnit = "years" | "months" | "weeks" | "days" | "hours" | "minutes" | "seconds";
 type StringifyThresholdsFull = { [K in TimeUnit]: [number, number] };
-export type StringifyThresholds = Partial<{ [K in TimeUnit]: StringifyThresholdsFull[K] | boolean }>;
+export type StringifyThresholds = Partial<{ [K in TimeUnit]: StringifyThresholdsFull[K] | number | boolean }>;
 type StringifyThresholds2 = Record<TimeUnit, [number, number] | boolean>;
 
 const thresholdDefaults: StringifyThresholdsFull = {
-	years: [Infinity, 0],
-	months: [Infinity, 0],
-	weeks: [Infinity, 0],
-	days: [0, Infinity],
-	hours: [0, Infinity],
-	minutes: [0, Infinity],
-	seconds: [0, 10 * MINUTE_S]
-};
-
-const thresholdWithDateDefaults: StringifyThresholdsFull = {
 	years: [0, Infinity],
 	months: [0, Infinity],
 	weeks: [Infinity, 0],
@@ -230,8 +253,17 @@ const thresholdWithDateDefaults: StringifyThresholdsFull = {
 	seconds: [0, 10 * MINUTE_S]
 };
 
-type StringSettingsFull = Record<TimeUnit, [string, string]> & Record<"spacer" | "joiner" | "finalJoiner", string>;
-export type StringSettings = Partial<Record<TimeUnit, [string, string] | string> & Record<"spacer" | "joiner" | "finalJoiner", string>>;
+type OtherStrings = {
+	/** What is put between a number and its unit. Default: " " */
+	spacer: string;
+	/** What is put between any two units, except the penultimate and ultimate ones. Default: ", " */
+	joiner: string;
+	/** What is put between the penultimate and ultimate units. Default: " and " */
+	finalJoiner: string;
+};
+
+type StringSettingsFull = Record<TimeUnit, [string, string]> & OtherStrings;
+export type StringSettings = Partial<Record<TimeUnit, [string, string] | string> & OtherStrings>;
 
 const stringDefaults: StringSettingsFull = {
 	years: ["year", "years"],
@@ -243,46 +275,120 @@ const stringDefaults: StringSettingsFull = {
 	seconds: ["second", "seconds"],
 	spacer: " ",
 	joiner: ", ",
-	finalJoiner: " and "
+	finalJoiner: " and ",
 };
 
+type TimeUnitBooleansFull = Record<TimeUnit, boolean>;
+/** The time units with booleans. Meaning depends on context. */
+export type TimeUnitBooleans = Partial<TimeUnitBooleansFull>;
+
+const timeUnitBooleanDefaults: TimeUnitBooleansFull = {
+	years: false,
+	months: false,
+	weeks: false,
+	days: false,
+	hours: false,
+	minutes: false,
+	seconds: false,
+};
+/** All the stringifier options  */
 export interface StringifyOptions {
+	/** The date to use as a starting point, if months and years are desired */
 	startDate?: Date;
+	/**
+	 * The thresholds for at which total intervals to display each unit.
+	 * 
+	 * Tuples indicate lower and upper thresholds. A single number will be used as an upper threshold.
+	 * 
+	 * `true` means `[0, Infinity]` (essentially enabling), and `false` means `[Infinity, 0]` (essentially disabling).
+	 */
 	thresholds?: StringifyThresholds;
+	/**
+	 * Whether to pad any given unit's number with 0s, like "5" -> "05".
+	 * 
+	 * Years will be padded to 4 digits, everything else to 2.
+	 * 
+	 * `true` enables all, `false` disables all. Default: `false`
+	 */
+	pad?: TimeUnitBooleans | boolean;
+	/**
+	 * Whether to still display units with a value of 0.
+	 * 
+	 * `true` enables all, `false` disables all. Default: `false`
+	 */
+	displayZero?: TimeUnitBooleans | boolean;
+	/**
+	 * Overrides for all the strings used in composing the final string.
+	 * 
+	 * Tuples on time units are used as singular and plural. A string will use the same for both.
+	 */
 	strings?: StringSettings;
 }
+
+/** StringifyOptions, but without startDate */
+export type StringifierOptions = Omit<StringifyOptions, "startDate">;
+
+/** All the stringifier options, except startDate, processed into a full set of settings */
+interface StringifySettings {
+	/**
+	 * The thresholds for at which total intervals to display each unit.
+	 * 
+	 * Tuples indicate lower and upper thresholds.
+	 */
+	thresholds: StringifyThresholdsFull;
+	/**
+	 * Whether to pad any given unit's number with 0s, like "5" -> "05".
+	 * 
+	 * Years will be padded to 4 digits, everything else to 2.
+	 */
+	pad: TimeUnitBooleansFull;
+	/**
+	 * Whether to still display units with a value of 0.
+	 */
+	displayZero: TimeUnitBooleansFull;
+	/**
+	 * Overrides for all the strings used in composing the final string.
+	 * 
+	 * Tuples on time units are used as singular and plural.
+	 */
+	strings: StringSettingsFull;
+}
+
+const settingsDefaults: StringifySettings = {
+	thresholds: thresholdDefaults,
+	pad: timeUnitBooleanDefaults,
+	displayZero: timeUnitBooleanDefaults,
+	strings: stringDefaults,
+};
 
 type Entry<O, K extends keyof O> = [K, O[K]]
 type Entries<O> = Entry<O, keyof O>[]
 
 /** Processes a date or StringifyOptions into a StringifyOptions with all the defaults filled in */
-const processStringifyOptions = (options: Date | StringifyOptions): {
-	startDate?: Date;
-	thresholds: StringifyThresholdsFull;
-	strings: StringSettingsFull;
-} => {
+const processStringifyOptions = (options: Date | StringifyOptions): { startDate?: Date; settings: StringifySettings } => {
 	if (options instanceof Date) {
 		const startDate = options;
-		return {
-			startDate,
-			thresholds: thresholdWithDateDefaults,
-			strings: stringDefaults
-		};
+		const settings = settingsDefaults;
+		return { startDate, settings };
 	}
-	const { startDate, thresholds, strings } = options;
-	const outputThresholds = processThresholdSettings(thresholds, startDate !== undefined);
-	const outputStrings = processStringSettings(strings);
-	return { startDate, thresholds: outputThresholds, strings: outputStrings };
+	const { startDate, thresholds, pad, displayZero, strings } = options;
+	const settings = {
+		thresholds: processThresholdSettings(thresholds, startDate !== undefined),
+		pad: processTimeUnitBooleans(pad),
+		displayZero: processTimeUnitBooleans(displayZero),
+		strings: processStringSettings(strings),
+	};
+	return { startDate, settings };
 };
 
 const timeElements: TimeUnit[] = ["years", "months", "weeks", "days", "hours", "minutes", "seconds"];
 
 const processThresholdSettings = (settings: StringifyThresholds | undefined, date: boolean): StringifyThresholdsFull => {
 	if (!settings)
-		return date ? thresholdWithDateDefaults : thresholdDefaults;
+		return thresholdDefaults;
 	const {
-		years = date ? [0, Infinity] : [Infinity, 0],
-		months = date ? [0, Infinity] : [Infinity, 0],
+		years = [0, Infinity],
+		months = [0, Infinity],
 		weeks = [Infinity, 0],
 		days = [0, Infinity],
 		hours = [0, Infinity],
@@ -291,20 +397,41 @@ const processThresholdSettings = (settings: StringifyThresholds | undefined, dat
 	} = settings;
 	const finalSettings = { years, months, weeks, days, hours, minutes, seconds };
 	for (const element of timeElements)
-		finalSettings[element] = booleanToTuple(finalSettings[element]);
+		finalSettings[element] = thresholdToTuple(finalSettings[element]);
 	return finalSettings as StringifyThresholdsFull;
 };
 
-const booleanToTuple = (booleanOrTuple: boolean | [number, number]): [number, number] => {
-	if (booleanOrTuple === false)
+const thresholdToTuple = (input: boolean | number | [number, number]): [number, number] => {
+	if (input === false)
 		return [Infinity, 0];
-	if (booleanOrTuple === true)
+	if (input === true)
 		return [0, Infinity];
-	return booleanOrTuple;
+	if (typeof input === "number")
+		return [0, input];
+	return input;
+};
+
+const processTimeUnitBooleans = (booleans: TimeUnitBooleans | boolean | undefined): TimeUnitBooleansFull => {
+	if (booleans === undefined || booleans === false)
+		return timeUnitBooleanDefaults;
+	if (booleans === true)
+		return {
+			years: true,
+			months: true,
+			weeks: true,
+			days: true,
+			hours: true,
+			minutes: true,
+			seconds: true,
+		};
+	const output: TimeUnitBooleans = {};
+	for (const element of timeElements)
+		output[element] = booleans[element] ?? timeUnitBooleanDefaults[element];
+	return output as TimeUnitBooleansFull;
 };
 
 const processStringSettings = (settings: StringSettings | undefined): StringSettingsFull => {
-	if (!settings)
+	if (settings === undefined)
 		return stringDefaults;
 	const {
 		years = ["year", "years"],

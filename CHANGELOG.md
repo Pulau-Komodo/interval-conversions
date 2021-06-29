@@ -1,3 +1,10 @@
+## 1.4.0
+
+- Allow padding time elements with zeroes.
+- Allow displaying elements with a value of zero.
+- Combined, those two things will allow output like 12:00:00.
+- Added `IntervalStringifier`, a class that can be instantiated with a `StringifierOptions` object (which is just `StringifyOptions` minus `startDate`) to avoid repeated processing of options.
+
 ## 1.3.3
 
 - Added "hrs" and "hr" as ways to specify the hours.

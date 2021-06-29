@@ -28,6 +28,7 @@
         "prefer-template": ["warn"],
 		"@typescript-eslint/member-delimiter-style": ["warn"],
         "@typescript-eslint/restrict-template-expressions": ["warn"],
-		"@typescript-eslint/no-floating-promises": ["warn"]
+		"@typescript-eslint/no-floating-promises": ["warn"],
+		"@typescript-eslint/no-extra-parens": ["warn"]
     }
 }
