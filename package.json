@@ -1,6 +1,6 @@
 {
   "name": "interval-conversions",
-  "version": "1.3.3",
+  "version": "1.4.0",
   "description": "Parses user input like \"1y6mo\" or \"5 hours 30 mins\" into ms time intervals. Also stringifies ms time intervals into \"5 years, 3 days and 1 hour\".",
   "main": "built/index.js",
   "types": "built/index.d.ts",
