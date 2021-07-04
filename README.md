@@ -86,11 +86,13 @@ The full `StringifyOptions` with all values explicitly set to their defaults is 
 	},
 }
 ```
-Each property is optional, and so is each property of of those properties. Below each property is explained.
+Each property is optional, and so is each property of those properties. Below each property is explained.
 
 ### Avoiding re-processing options
 
-Processing provided `StringifyOptions` is a relatively expensive operation. In general, the more types of options set, the longer it takes to process. Under some circumstances it can be more than half of the total time stringifying the interval. That is why there is a class `Stringifier`. To avoid unnecessary re-processing, `Stringifier` can be instantiated with a `StringifierOptions` object. `StringifierOptions` is just `StringifyOptions` minus `startDate`. The resulting object has a `stringify` method that optionally takes a `Date` as starting date. When sticking to the defaults, this should be unnecessary.
+Processing provided `StringifyOptions` is a relatively expensive operation. In general, the more types of options set, the longer it takes to process. Under some circumstances it can be more than half of the total time stringifying the interval. That is why there is a class `Stringifier`. To avoid unnecessary re-processing, `Stringifier` can be instantiated with a `StringifierOptions` object. `StringifierOptions` is just `StringifyOptions` minus `startDate`. The resulting object has a `stringify` method that optionally takes a `Date` as starting date.
+
+When sticking to the defaults, using `Stringifier` should be unnecessary.
 
 Note that here, a `NaN` interval will throw an error instead of returning an empty string.
 
@@ -113,7 +115,7 @@ for (let i = 0; i < 10; i++) { // Efficient, processing options only once, then 
 
 ### Custom thresholds
 
-The `thresholds` property is an object with optional time unit properties. Each property needs to be `[number, number]`, a number, a boolean, or left undefined. If it is `[number, number]`, the first number is the lower threshold (expressed in that unit) for the unit to appear, and the second number is the upper threshold beyond which it no longer appears. If it is a number, it will be treated as the upper threshold, with the lower threshold set to 0. If it is `true`, it will be treated like `[0, Infinity]`, and if it is `false`, it will be treated like `[Infinity, 0]` (technically there are countless ways to express an unreachable threshold, I picked this one). `Infinity` as a lower threshold makes a unit never appear, and as an upper threshold makes the threshold infinite.
+The `thresholds` property is an object with optional time unit properties. Each property needs to be `[number, number]`, a number or a boolean, or be left undefined. If it is `[number, number]`, the first number is the lower threshold (expressed in that unit) for the unit to appear, and the second number is the upper threshold beyond which it no longer appears. If it is a number, it will be treated as the upper threshold, with the lower threshold set to 0. If it is `true`, it will be treated like `[0, Infinity]`, and if it is `false`, it will be treated like `[Infinity, 0]` (technically there are countless ways to express an unreachable threshold, I picked this one). `Infinity` is a valid value for a threshold.
 
 Fractional parts of thresholds for years and months do nothing.
 
